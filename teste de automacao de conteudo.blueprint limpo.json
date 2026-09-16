@@ -1,0 +1,355 @@
+{
+    "name": "automacao-conteudo-cultural",
+    "flow": [
+        {
+            "id": 50,
+            "module": "google-sheets:filterRows",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "from": "drive",
+                "limit": "20",
+                "sheetId": "Página1",
+                "sortOrder": "desc",
+                "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+                "tableFirstRow": "A1:Z1",
+                "includesHeaders": true,
+                "valueRenderOption": "FORMATTED_VALUE",
+                "dateTimeRenderOption": "FORMATTED_STRING"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 150,
+                    "name": "links fontes"
+                },
+                "restore": {
+                    "expect": {
+                        "from": {
+                            "label": "Select from My Drive"
+                        },
+                        "sheetId": {
+                            "mode": "chose",
+                            "label": "Página1"
+                        },
+                        "spreadsheetId": {
+                            "mode": "chose",
+                            "label": "lista de links"
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "google"
+                            },
+                            "label": "Google Connection"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": 52,
+            "module": "rss:ActionReadArticles",
+            "version": 4,
+            "parameters": {
+                "include": []
+            },
+            "mapper": {
+                "url": "{{50.`0`}}",
+                "gzip": true,
+                "password": "",
+                "username": "",
+                "maxResults": "2",
+                "filterDateTo": "",
+                "filterDateFrom": ""
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 150,
+                    "name": "análise de links"
+                }
+            }
+        },
+        {
+            "id": 62,
+            "module": "gemini-ai:createACompletionGeminiPro",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "model": "gemini-3.5-flash",
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": "Analise a notícia abaixo e responda estritamente no formato JSON abaixo, sem formatação Markdown adicional de bloco de código:\r\n\r\n{\r\n  \"titulo_limpo\": \"Um título curto de até 6 palavras para a capa da imagem\",\r\n  \"post_completo\": \"Legenda completa com gancho, corpo do texto e hashtags\",\r\n  \"sentimento_tag\": \"Escolha apenas uma opção: [Notícia Quente | Análise / Reflexão | Evento / Lançamento]\"\r\n}\r\n\r\nDados da Notícia:\r\n- Categoria: {{50.`1`}}\r\n- Título: {{52.title}}\r\n- Resumo: {{52.summary}}\n\nAo final do texto gerado, insira obrigatoriamente a citação da fonte de consulta no seguinte padrão: \n- Se a variável {{52.author}} estiver presente e não for vazia/genérica: Fonte: {{52.author}}/ [Nome do Site]\"*\n- Se a variável {{52.author}} não estiver disponível: Fonte: [Nome do Site]\"*",
+                                "type": "text"
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": "0.7"
+                },
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": "Você é um estrategista cultural e produtor de conteúdo especializado em artes e entretenimento. Sua missão é analisar artigos e notícias do setor cultural e transformá-los em posts engajadores para redes sociais. Adapte o tom de voz conforme a categoria do conteúdo fornecido."
+                        }
+                    ]
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 150,
+                    "name": "gerar posts segundo fontes"
+                }
+            }
+        },
+        {
+            "id": 65,
+            "module": "google-sheets:addRow",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "from": "drive",
+                "mode": "select",
+                "values": {
+                    "data": "{{52.dateCreated}}",
+                    "fonte": "{{52.url}}",
+                    "Posts_Gerados": "{{62.candidates[].content.parts[].text}}"
+                },
+                "sheetId": "Posts",
+                "spreadsheetId": "YOUR_SPREADSHEET_ID_HERE",
+                "includesHeaders": true,
+                "insertDataOption": "INSERT_ROWS",
+                "useColumnHeaders": true,
+                "valueInputOption": "USER_ENTERED"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 150,
+                    "name": "catalogar posts e tags de assuntos (sentimentos)"
+                }
+            }
+        },
+        {
+            "id": 77,
+            "module": "gemini-ai:createACompletionGeminiPro",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": null
+            },
+            "mapper": {
+                "model": "gemini-3.5-flash-lite",
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {
+                                "text": "Analise a pauta a seguir:\r\nTítulo: {{52.title}} ou {{62.result.titulo_limpo}} \r\nTexto: {{52.description}} ou {{62.result.post_completo}}",
+                                "type": "text"
+                            }
+                        ]
+                    }
+                ],
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": "Você é um classificador de conteúdo para redes sociais de um portal de artes e cultura. \r\nSua única função é analisar o título/texto da notícia e responder APENAS com uma palavra: \"REAL\" ou \"GERAR\".\r\n- Responda REAL se o texto mencionar expressamente um artista real, ator, diretor, dramaturgo, espetáculo específico, festival ou obra de arte física onde a foto do artista/evento seja indispensável.\r\n- Responda GERAR se o texto for sobre um tema genérico, conceitual, teórico, crônica, reflexão sobre arte ou se não houver um artista/evento específico identificado.\r\nNÃO escreva nenhuma outra palavra, pontuação ou explicação. Apenas REAL ou GERAR."
+                        }
+                    ]
+                }
+            },
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 150
+                }
+            }
+        },
+        {
+            "id": 78,
+            "module": "builtin:BasicIfElse",
+            "version": 1,
+            "branches": [
+                {
+                    "merge": false,
+                    "label": "REAL - usar imagem RSS",
+                    "type": "condition",
+                    "flow": [
+                        {
+                            "id": 84,
+                            "module": "http:DownloadFile",
+                            "version": 4,
+                            "parameters": {
+                                "authenticationType": "noAuth"
+                            },
+                            "mapper": {
+                                "url": "{{52.enclosures}}",
+                                "shareCookies": false,
+                                "stopOnHttpError": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 0
+                                }
+                            }
+                        },
+                        {
+                            "id": 82,
+                            "module": "google-drive:uploadAFile",
+                            "version": 4,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "data": "{{52.dateUpdated}}",
+                                "select": "value",
+                                "convert": false,
+                                "filename": "{{52.image}}.jpg",
+                                "folderId": "YOUR_GOOGLE_DRIVE_FOLDER_ID_HERE",
+                                "destination": "drive"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2100,
+                                    "y": 0,
+                                    "name": "guarda a imagem "
+                                }
+                            }
+                        },
+                        {
+                            "id": 81,
+                            "module": "google-email:sendAnEmail",
+                            "version": 4,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "to": [
+                                    "user@example.com"
+                                ],
+                                "content": "<div style=\"font-family: Arial, sans-serif;\"><p>Olá,</p><p>Segue para aprovação a sugestão de post:</p><h2>📌 {{62.result.titulo_limpo}}</h2><div style=\"background-color: #f9f9f9; padding: 15px;\">{{62.result.post_completo}}</div><br><a href=\"{{82.webViewLink}}\">📁 Abrir Imagem no Google Drive</a></div>",
+                                "subject": "Novo post {{62.result.titulo_limpo}}",
+                                "bodyType": "rawHtml"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2400,
+                                    "y": 0,
+                                    "name": "confirmação"
+                                }
+                            }
+                        }
+                    ],
+                    "conditions": [
+                        [
+                            {
+                                "a": "{{77.candidates}}",
+                                "b": "REAL",
+                                "o": "text:equal"
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "merge": false,
+                    "disabled": false,
+                    "type": "else",
+                    "flow": [
+                        {
+                            "id": 74,
+                            "module": "http:MakeRequest",
+                            "version": 4,
+                            "parameters": {
+                                "authenticationType": "noAuth"
+                            },
+                            "mapper": {
+                                "url": "https://image.pollinations.ai/prompt/{{encodeURL(62.result.titulo_limpo)}}",
+                                "method": "get",
+                                "parseResponse": true,
+                                "stopOnHttpError": true
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1800,
+                                    "y": 300,
+                                    "name": "gera imagem "
+                                }
+                            }
+                        },
+                        {
+                            "id": 76,
+                            "module": "google-drive:uploadAFile",
+                            "version": 4,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "data": "{{74.data}}",
+                                "select": "value",
+                                "convert": false,
+                                "filename": "{{62.result.titulo_limpo}}.png",
+                                "folderId": "YOUR_GOOGLE_DRIVE_FOLDER_ID_HERE",
+                                "destination": "drive"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2100,
+                                    "y": 300,
+                                    "name": "guarda a imagem "
+                                }
+                            }
+                        },
+                        {
+                            "id": 75,
+                            "module": "google-email:sendAnEmail",
+                            "version": 4,
+                            "parameters": {
+                                "__IMTCONN__": null
+                            },
+                            "mapper": {
+                                "to": [
+                                    "user@example.com"
+                                ],
+                                "content": "<div style=\"font-family: Arial, sans-serif;\"><p>Olá,</p><p>Segue para aprovação a sugestão de post:</p><h2>📌 {{62.result.titulo_limpo}}</h2><div style=\"background-color: #f9f9f9; padding: 15px;\">{{62.result.post_completo}}</div><br><a href=\"{{76.webViewLink}}\">📁 Abrir Imagem no Google Drive</a></div>",
+                                "subject": "Novo post {{62.result.titulo_limpo}}",
+                                "bodyType": "rawHtml"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 2400,
+                                    "y": 300,
+                                    "name": "confirmação"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true
+        },
+        "zone": "us2.make.com"
+    }
+}
