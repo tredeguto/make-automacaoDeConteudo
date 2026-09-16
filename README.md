@@ -1,4 +1,12 @@
-# 🎭 Automação de Curadoria e Geração de Conteúdo Cultural
+# 🎭 Automação de Curadoria & Geração de Conteúdo Cultural
+
+![Make](https://img.shields.io/badge/Make-000000?style=for-the-badge&logo=make&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![Google Sheets](https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=google-sheets&logoColor=white)
+![RSS](https://img.shields.io/badge/RSS-FFA500?style=for-the-badge&logo=rss&logoColor=white)
+
+---
+
 
 Este projeto é um fluxo automatizado construído no **Make.com** para ler feeds de notícias e artigos do setor cultural, gerar redações otimizadas para redes sociais via **Gemini AI**, classificar a necessidade de imagem real vs. gerada por IA e enviar o resultado para aprovação final por e-mail.
 
